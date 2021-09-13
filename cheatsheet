@@ -1,0 +1,104 @@
+
+### ROS COMMANDS CHEATSHEET ###
+
+roscore
+
+roscd [package]
+rosls
+
+--------------------------------------------------------------------------------
+
+rospack
+  list:                list all packages known to ros
+	depends [package]:   list packages on which package depends on
+  find [package]:      find package path
+
+rosrun
+  [package] [exec]:    run an executable that starts a node
+
+roslaunch
+  [package] [file]:    starts multiple nodes in package as defined in a launch file
+
+rosnode
+  list:                list all running nodes
+  info [node]:         print info about node (publications,subscriptions,services)
+  kill [node]:         kill a running node
+  ping [node]:         check if node is still responsive
+
+--------------------------------------------------------------------------------
+
+rostopic
+  list:                list all active topics
+  echo [topic]:        print stream of messages from topic
+  type [topic]:        print message type used by topic
+  pub [topic] [data]:  manually publish a message to topic
+
+rosmsg
+  list:                list all message types known to ros
+  info [msg]:          print message structure
+  package [package]:   list messages of a package
+  packages [msg]:      list packages that contain the message
+
+--------------------------------------------------------------------------------
+
+rosservice
+  list:                list all available services
+  call [srv] [arg]:    call a service manually
+  type [srv]:          print service type (defines input/output arguments)
+  find [srv_typ]:      find services by service type
+
+rossrv
+  ( rosservice->rossrv <=> rostopic->rosmsg )
+  list:               list all service types known to ros
+  info [srv_typ]:     print info (input/output argments)
+  package [package]:  list service types of package
+  packages [srv_typ]: list packages that contain the service type
+
+--------------------------------------------------------------------------------
+
+rosparam
+  set,get,load,dump,delete,list
+  set/get stuff on the parameter server
+
+--------------------------------------------------------------------------------
+
+rosbag
+  info [file]:         print info on bag file
+  play [file]:         play back bag file
+  record [file]:       record messages to bag file for later playback
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+### USEFULL COMMANDS ###
+
+create packages
+  cd ~/catkin_ws/src
+  catkin_create_pkg [name] [dependencies]
+  cd ..
+  catkin build [name]
+
+display topics graph
+  rosrun rqt_graph rqt_graph
+display messages plot
+  rosrun rqt_plot rqt_plot
+
+open console for displaying live logs
+  rosrun rqt_console rqt_console
+open console filter settings
+  rosrun rqt_logger_level rqt_logger_level
+
+start node manager
+  node_manager
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+### SETUP ###
+
+install dynamixel sdk for python
+  git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git
+  cd ~/DynamixelSDK/python
+  sudo python setup.py install
+  sudo usermod -a -G dialout $USER
+  sudo reboot
