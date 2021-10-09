@@ -1,49 +1,13 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(marker)
 
-find_package(catkin REQUIRED COMPONENTS
-  rospy
-  std_msgs
-  geometry_msgs
-  message_generation
-)
+find_package(catkin_simple REQUIRED)
+catkin_simple(ALL_DEPS_REQUIRED)
 
-################################################
-## Declare ROS messages, services and actions ##
-################################################
+cs_install()
 
-add_message_files(
-  FILES
-  Setpoint.msg
-  Draw.msg
-)
+cs_install_scripts(scripts/drawer.py)
+cs_install_scripts(scripts/wheels.py)
+cs_install_scripts(scripts/planner.py)
 
-generate_messages(
- DEPENDENCIES
- std_msgs
- geometry_msgs
-)
-
-###################################
-## catkin specific configuration ##
-###################################
-
-catkin_package(
-  LIBRARIES marker
-  CATKIN_DEPENDS
-    rospy
-    std_msgs
-    geometry_msgs
-    message_runtime
-)
-
-#############
-## Install ##
-#############
-
-catkin_install_python(
-  PROGRAMS
-    scripts/sim_circ.py
-    scripts/main.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+cs_export()

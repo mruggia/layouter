@@ -1,0 +1,4 @@
+# OMAV vehicle parameters
+mass: 5.02
+inertia: {xx: 0.06, xy: 0.0, xz: 0.0, yy: 0.06, yz: 0.0, zz: 0.15}
+com_offset: {x: 0.0, y: 0.0, z: 0.03}

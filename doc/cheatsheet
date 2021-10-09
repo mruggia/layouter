@@ -90,15 +90,3 @@ open console filter settings
 
 start node manager
   node_manager
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-### SETUP ###
-
-install dynamixel sdk for python
-  git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git
-  cd ~/DynamixelSDK/python
-  sudo python setup.py install
-  sudo usermod -a -G dialout $USER
-  sudo reboot

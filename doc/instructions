@@ -24,6 +24,10 @@ install dynamixel sdk
   sudo usermod -a -G dialout $USER
   sudo reboot
 
+clean compile
+  cd catkin_ws
+  catkin build marker --force-cmake --pre-clean
+
 ------
 
 screen config

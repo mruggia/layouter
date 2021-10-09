@@ -1,0 +1,46 @@
+<launch>
+
+  <group ns="marker">
+
+    <!-- plate node: odometry_drone & [camera] -> odometry_plate -->
+    <node name="plate" pkg="marker" type="plate.py" output="screen">
+      <param name="rate" value="50"/>                 <!-- [Hz] rate at which plate odometry is published -->
+    </node>
+
+    <!-- planner node: odometry_drone & odometry_plate -> setpoint_drone & setpoint_plate & draw -->
+    <node name="planner" pkg="marker" type="planner.py" output="screen">
+      <param name="rate" value="50"/>                 <!-- [Hz] rate at which setpoint topic is published -->
+      <param name="max_vel" value="50.0"/>            <!-- [mm/s] max velocity in trajectory -->
+      <param name="max_acc" value="25.0"/>            <!-- [mm/s^2]max acceleration in trajectory -->
+      <param name="wait_draw" value="0.5"/>           <!-- [s] time to wait after draw on/off command is sent -->
+      <param name="wait_corner" value="0.5"/>         <!-- [s] time to wait at sharp corner -->
+      <param name="tresh_corner" value="2.0"/>        <!-- [deg] angle treshold for a corner to be sharp -->
+    </node>
+
+    <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->
+    <node name="wheels" pkg="marker" type="wheels.py" output="screen">
+      <param name="DXL_DEV" value="/dev/ttyUSB0"/>    <!-- path to dynamixel usb device (U2D2 or similar) -->
+      <param name="DXL_ID1" value="21"/>              <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
+      <param name="DXL_ID2" value="22"/>              <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
+      <param name="DXL_ID3" value="23"/>              <!-- ID of dynamixel motor 3 (at 30deg from x-axis) -->
+      <param name="wheel_dia" value="100.0"/>         <!-- [mm] diameter of omni wheels -->
+    </node>
+
+    <!-- drawer node: draw -> [marker servo] -->
+    <node name="drawer" pkg="marker" type="drawer.py" output="screen">
+      <param name="device" value="/dev/ttyACM1"/>    <!-- path to dynamixel usb device (U2D2 or similar) -->
+    </node>
+
+  </group>
+
+
+  <!-- load vehicle parameters used by drone -->
+  <!-- <rosparam command="load" file="vehicle.yaml" ns="/ouzel/controller_node"/> -->
+
+  <!-- relays that connect marker namespace to drone namespace -->
+  <group ns="relays">
+    <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="/ouzel/msf_core/odometry /marker/odometry_drone"/>
+    <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="/marker/setpoint_drone /ouzel/command/trajectory"/>
+  </group>
+
+</launch>
