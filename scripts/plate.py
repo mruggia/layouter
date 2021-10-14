@@ -2,7 +2,7 @@
 
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Pose2D
+from geometry_msgs.msg import Pose2D, Pose
 from tf.transformations import euler_from_quaternion
 
 #program entry point
@@ -22,14 +22,14 @@ def main():
     while not rospy.is_shutdown():
 
         #get drone yaw
-        odom_drone_quat = odom_drone.pose.pose.orientation
+        odom_drone_quat = odom_drone.orientation
         odom_drone_rpy = euler_from_quaternion([odom_drone_quat.x,odom_drone_quat.y,odom_drone_quat.z,odom_drone_quat.w])
         odom_drone_yaw = odom_drone_rpy[2]
 
         #calculate plate odometry
         odom_plate = Pose2D()
-        odom_plate.x = odom_drone.pose.pose.position.x
-        odom_plate.y = odom_drone.pose.pose.position.y
+        odom_plate.x = odom_drone.position.x
+        odom_plate.y = odom_drone.position.y
         odom_plate.theta = odom_drone_yaw
 
         #publish plate odometry
@@ -41,9 +41,10 @@ def main():
     rospy.spin()
 
 #callback for drone odometry topic
-odom_drone = Odometry();
+odom_drone = Pose();
+odom_drone.orientation.w = 1.0
 def callback_odom_drone(odom_drone_new):
-    global odom_drone; odom_drone = odom_drone_new
+    global odom_drone; odom_drone = odom_drone_new.pose.pose
 
 
 if __name__ == '__main__':

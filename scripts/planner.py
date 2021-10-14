@@ -9,7 +9,7 @@ from copy import deepcopy
 import rospy
 
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Transform, Twist, Pose2D
+from geometry_msgs.msg import Transform, Twist, Pose2D, Pose, Quaternion, Point, Vector3
 from trajectory_msgs.msg import MultiDOFJointTrajectory, MultiDOFJointTrajectoryPoint
 from std_msgs.msg import Bool
 
@@ -33,6 +33,7 @@ def main():
     #initialize subscriptions
     rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
     rospy.Subscriber('odometry_plate', Pose2D, callback_odom_plate)
+    rospy.Subscriber('setpoint_drone', MultiDOFJointTrajectory, callback_setp_drone)
     #initialize services
     rospy.Service('execute', Execute, handle_execute)
     #initialize publishers
@@ -46,37 +47,36 @@ def main():
     global param_wait_draw; param_wait_draw = float(rospy.get_param("~wait_draw"))
     global param_wait_corner; param_wait_corner = float(rospy.get_param("~wait_corner"))
     global param_tresh_corner; param_tresh_corner = float(rospy.get_param("~tresh_corner"))
+    global param_comp_drone_err; param_comp_drone_err = bool(int(rospy.get_param("~comp_drone_err")))
     #run until node is shut down
     rospy.spin()
 
 #callback for drone odometry topic
-odom_drone_curr = Odometry();odom_drone_home = Odometry();
+odom_drone_curr = Pose()
+odom_drone_curr.orientation.w = 1.0
 def callback_odom_drone(odom_drone):
-    global odom_drone_curr; odom_drone_curr = odom_drone
+    global odom_drone_curr; odom_drone_curr = deepcopy(odom_drone.pose.pose)
 
 #callback for plate odometry topic
-odom_plate_curr = Pose2D(); odom_plate_home = Pose2D();
+odom_plate_curr = Pose2D()
 def callback_odom_plate(odom_plate):
-    global odom_plate_curr; odom_plate_curr = odom_plate
+    global odom_plate_curr; odom_plate_curr = deepcopy(odom_plate)
+
+#callback for drone setpoint
+setp_drone_curr = Pose()
+setp_drone_curr.orientation.w = 1.0
+def callback_setp_drone(setp_drone):
+    global setp_drone_curr;
+    setp_drone_curr.position = _Vector3ToPoint(setp_drone.points[0].transforms[0].translation)
+    setp_drone_curr.orientation = deepcopy(setp_drone.points[0].transforms[0].rotation)
 
 ################################################################################
 
 #handle for trajectory execution service
 def handle_execute(req):
 
-    #save current plate odometry as home
-    global odom_plate_home; odom_plate_home = deepcopy(odom_plate_curr)
-    #calculate drone odometry home
-    global odom_drone_home; odom_drone_home = Odometry()
-    odom_drone_home.pose.pose.position.x = odom_plate_home.x
-    odom_drone_home.pose.pose.position.y = odom_plate_home.y
-    odom_drone_home.pose.pose.position.z = odom_drone_curr.pose.pose.position.z
-    odom_drone_home.pose.pose.orientation.z = math.sin(odom_plate_home.theta/2)
-    odom_drone_home.pose.pose.orientation.w = math.cos(odom_plate_home.theta/2)
-    #send homing command to wheels
-    rospy.wait_for_service('home')
-    srv_home = rospy.ServiceProxy('home', Home)
-    srv_home(odom_plate_home)
+    #set current state as home
+    set_home()
 
     #read gcode file
     gcode = open(os.path.dirname(__file__)+"/../gcode/"+req.filename, 'r').read()
@@ -287,16 +287,13 @@ def gcode_run(vertices, segments):
 
 # publish setpoint given by gcode_run
 def gcode_publish( pos, vel, acc):
+    global odom_plate_home, odom_drone_home
 
     point_drone = MultiDOFJointTrajectoryPoint([Transform()], [Twist()], [Twist(),Twist()], rospy.Time(0))
-    point_drone.transforms[0].translation.x = odom_drone_home.pose.pose.position.x + pos[0]/1000.0
-    point_drone.transforms[0].translation.y = odom_drone_home.pose.pose.position.y + pos[1]/1000.0
-    point_drone.transforms[0].translation.z = odom_drone_home.pose.pose.position.z
-    point_drone.transforms[0].rotation = deepcopy(odom_drone_home.pose.pose.orientation)
-    point_drone.velocities[0].linear.x = vel[0]/1000.0
-    point_drone.velocities[0].linear.y = vel[1]/1000.0
-    point_drone.accelerations[0].linear.x = acc[0]/1000.0
-    point_drone.accelerations[0].linear.y = acc[1]/1000.0
+    point_drone.transforms[0].translation = _PointToVector3(_vecAdd( odom_drone_home.position, Point( pos[0]/1000.0, pos[1]/1000.0, 0.0 ) ))
+    point_drone.transforms[0].rotation = deepcopy( odom_drone_home.orientation )
+    point_drone.velocities[0].linear = Vector3( vel[0]/1000.0, vel[1]/1000.0, 0.0 )
+    point_drone.accelerations[0].linear = Vector3( acc[0]/1000.0, acc[1]/1000.0, 0.0 )
     setpoint_drone = MultiDOFJointTrajectory()
     setpoint_drone.header.stamp = rospy.Time.now()
     setpoint_drone.header.frame_id ='world'
@@ -310,6 +307,54 @@ def gcode_publish( pos, vel, acc):
     setpoint_plate.theta = odom_plate_home.theta
     pub_setpoint_plate.publish(setpoint_plate)
 
+
+#set the current state as home (used at start of trajectory execution)
+def set_home():
+    global odom_plate_home, odom_drone_home
+
+    #save current plate odometry as home
+    odom_plate_home = deepcopy(odom_plate_curr)
+
+    #calculate drone home form plate home
+    odom_drone_home = Pose()
+    odom_drone_home.position = Point( odom_plate_home.x, odom_plate_home.y, odom_drone_curr.position.z )
+    odom_drone_home.orientation = Quaternion( 0, 0, math.sin(odom_plate_home.theta/2), math.cos(odom_plate_home.theta/2))
+
+    #compensate home pos for furrent tracking error (if requested)
+    if param_comp_drone_err:
+        #calculate drone tracking error from last setpoint (assumes drone is in steady state)
+        offs_drone = Pose()
+        offs_drone.orientation = _quatMult( setp_drone_curr.orientation, _quatInv(odom_drone_curr.orientation) )
+        offs_drone.position = _vecSub( setp_drone_curr.position, odom_drone_curr.position )
+        #add tracking error to home
+        odom_drone_home.position = _vecAdd( odom_drone_home.position, offs_drone.position )
+        odom_drone_home.orientation = _quatMult( offs_drone.orientation, odom_drone_home.orientation )
+
+    #send homing command to wheels
+    srv_home = rospy.ServiceProxy('home', Home)
+    srv_home(odom_plate_home)
+
+################################################################################
+
+def _quatInv(quat):
+    return Quaternion(quat.x,quat.y,quat.z, -quat.w)
+def _quatMult(q1,q2):
+    return Quaternion(
+        q1.w*q2.x + q1.x*q2.w + q1.y*q2.z - q1.z*q2.y,
+        q1.w*q2.y - q1.x*q2.z + q1.y*q2.w + q1.z*q2.x,
+        q1.w*q2.z + q1.x*q2.y - q1.y*q2.x + q1.z*q2.w,
+        q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z
+    )
+
+def _vecAdd(v1,v2):
+    return Point(v1.x+v2.x, v1.y+v2.y, v1.z+v2.z)
+def _vecSub(v1,v2):
+    return Point(v1.x-v2.x, v1.y-v2.y, v1.z-v2.z)
+
+def _PointToVector3(point):
+    return Vector3(point.x, point.y, point.z)
+def _Vector3ToPoint(vector):
+    return Point(vector.x, vector.y, vector.z)
 
 ################################################################################
 

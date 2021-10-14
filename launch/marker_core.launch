@@ -15,20 +15,25 @@
       <param name="wait_draw" value="0.5"/>           <!-- [s] time to wait after draw on/off command is sent -->
       <param name="wait_corner" value="0.5"/>         <!-- [s] time to wait at sharp corner -->
       <param name="tresh_corner" value="2.0"/>        <!-- [deg] angle treshold for a corner to be sharp -->
+      <param name="comp_drone_err" value="1"/>        <!-- [1 or 0] flag if tracking error of drone is to be compensated -->
     </node>
 
     <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->
     <node name="wheels" pkg="marker" type="wheels.py" output="screen">
-      <param name="DXL_DEV" value="/dev/ttyUSB0"/>    <!-- path to dynamixel usb device (U2D2 or similar) -->
       <param name="DXL_ID1" value="21"/>              <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
       <param name="DXL_ID2" value="22"/>              <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
       <param name="DXL_ID3" value="23"/>              <!-- ID of dynamixel motor 3 (at 30deg from x-axis) -->
       <param name="wheel_dia" value="100.0"/>         <!-- [mm] diameter of omni wheels -->
+      <!-- path to dynamixel usb device (U2D2 or similar) -->
+      <param name="DXL_DEV" value="/dev/ttyUSB0" if="$(eval env('USER')=='marker')"/>   <!-- test platform -->
+      <param name="DXL_DEV" value="/dev/ttyUSB1" if="$(eval env('USER')=='ouzel')"/>    <!-- ouzel drone -->
     </node>
 
     <!-- drawer node: draw -> [marker servo] -->
     <node name="drawer" pkg="marker" type="drawer.py" output="screen">
-      <param name="device" value="/dev/ttyACM1"/>    <!-- path to dynamixel usb device (U2D2 or similar) -->
+      <!-- path to arduino usb device tat controls marker servo -->
+      <param name="device" value="/dev/ttyACM1" if="$(eval env('USER')=='marker')"/>   <!-- test platform -->
+      <param name="device" value="/dev/ttyACM1" if="$(eval env('USER')=='ouzel')"/>    <!-- ouzel drone -->
     </node>
 
   </group>
@@ -38,7 +43,7 @@
   <!-- <rosparam command="load" file="vehicle.yaml" ns="/ouzel/controller_node"/> -->
 
   <!-- relays that connect marker namespace to drone namespace -->
-  <group ns="relays">
+  <group ns="relays" if="$(eval env('USER')=='ouzel')">
     <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="/ouzel/msf_core/odometry /marker/odometry_drone"/>
     <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="/marker/setpoint_drone /ouzel/command/trajectory"/>
   </group>
