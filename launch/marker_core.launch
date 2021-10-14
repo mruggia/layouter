@@ -20,6 +20,7 @@
 
     <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->
     <node name="wheels" pkg="marker" type="wheels.py" output="screen">
+      <param name="rate" value="20"/>                 <!-- [Hz] rate at which wheel commands are updated -->
       <param name="DXL_ID1" value="21"/>              <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
       <param name="DXL_ID2" value="22"/>              <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
       <param name="DXL_ID3" value="23"/>              <!-- ID of dynamixel motor 3 (at 30deg from x-axis) -->

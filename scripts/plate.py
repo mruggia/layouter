@@ -37,8 +37,6 @@ def main():
 
         rate.sleep()
 
-    #run until node is shut down
-    rospy.spin()
 
 #callback for drone odometry topic
 odom_drone = Pose();

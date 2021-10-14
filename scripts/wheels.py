@@ -23,6 +23,7 @@ def main():
     #initialize services
     rospy.Service('home', Home, home_handle)
     #load parameters
+    global param_rate; param_rate = float(rospy.get_param("~rate"))
     global DXL_DEV; DXL_DEV = rospy.get_param("~DXL_DEV")
     global DXL_ID1; DXL_ID1 = int(rospy.get_param("~DXL_ID1"))
     global DXL_ID2; DXL_ID2 = int(rospy.get_param("~DXL_ID2"))
@@ -37,9 +38,27 @@ def main():
     if not dxl_port.openPort():         rospy.logerr(rospy.get_caller_id() + ' failed to open dynamixel port'); return
     if not dxl_port.setBaudRate(57600): rospy.logerr(rospy.get_caller_id() + ' failed to set dynamixel baud rate'); return
     dxl_on()
+    #trigonometric constants
+    COS_240 =-0.5;  SIN_240 =-0.866025403784
+    COS_000 = 1.0;  SIN_000 = 0.0
+    COS_120 =-0.5;  SIN_120 = 0.866025403784
 
-    #run until node is shut down
-    rospy.spin()
+    #run wheel update
+    rate = rospy.Rate(param_rate)
+    while not rospy.is_shutdown():
+
+        #calculate motor goal positions
+        rot_x = math.cos(-setp_plate.theta)*(setp_plate.x-home_plate.x) - math.sin(-setp_plate.theta)*(setp_plate.y-home_plate.y)
+        rot_y = math.sin(-setp_plate.theta)*(setp_plate.x-home_plate.x) + math.cos(-setp_plate.theta)*(setp_plate.y-home_plate.y)
+        goal1 = -int(( COS_240*rot_x + SIN_240*rot_y )*DXL_PULSE_PER_M)
+        goal2 = -int(( COS_000*rot_x + SIN_000*rot_y )*DXL_PULSE_PER_M)
+        goal3 = -int(( COS_120*rot_x + SIN_120*rot_y )*DXL_PULSE_PER_M)
+
+        #send goal positions to motors
+        dxl_set(goal1, goal2, goal3)
+
+        rate.sleep()
+
 
 ################################################################################
 
@@ -58,26 +77,10 @@ def odometry_plate_callback(odom_plate_new):
     odom_plate = deepcopy(odom_plate_new)
 
 #callback for setpoint topic
-def setpoint_plate_callback(setp_plate):
-
-    #helper function to split long into byte array
-    def to_4ByteArray(long):
-        return [ (long>>0)&0xFF, (long>>8)&0xFF, (long>>16)&0xFF, (long>>24)&0xFF]
-
-    #trigonometric constants
-    COS_240 =-0.5;  SIN_240 =-0.866025403784
-    COS_000 = 1.0;  SIN_000 = 0.0
-    COS_120 =-0.5;  SIN_120 = 0.866025403784
-
-    #calculate motor goal positions
-    rot_x = math.cos(-setp_plate.theta)*(setp_plate.x-home_plate.x) - math.sin(-setp_plate.theta)*(setp_plate.y-home_plate.y)
-    rot_y = math.sin(-setp_plate.theta)*(setp_plate.x-home_plate.x) + math.cos(-setp_plate.theta)*(setp_plate.y-home_plate.y)
-    goal1 = -int(( COS_240*rot_x + SIN_240*rot_y )*DXL_PULSE_PER_M)
-    goal2 = -int(( COS_000*rot_x + SIN_000*rot_y )*DXL_PULSE_PER_M)
-    goal3 = -int(( COS_120*rot_x + SIN_120*rot_y )*DXL_PULSE_PER_M)
-
-    #send goal positions to motors
-    dxl_set(goal1, goal2, goal3)
+setp_plate = Pose2D()
+def setpoint_plate_callback(setp_plate_new):
+    global setp_plate
+    setp_plate = deepcopy(setp_plate_new)
 
 
 ################################################################################
