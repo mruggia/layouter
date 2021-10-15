@@ -18,11 +18,7 @@ enable ssh
   sudo ufw allow ssh
 
 install dynamixel sdk
-  git clone https://github.com/ROBOTIS-GIT/DynamixelSDK.git
-  cd ~/DynamixelSDK/python
-  sudo python setup.py install
-  sudo usermod -a -G dialout $USER
-  sudo reboot
+  sudo apt-get install ros-melodic-dynamixel-sdk
 
 clean compile
   cd catkin_ws
