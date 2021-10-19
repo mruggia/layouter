@@ -26,6 +26,7 @@ from geometry_msgs.msg import Pose2D, Pose
 
 
 #camera properties
+cam_offs_x = 0.0; cam_offs_y = 0.0;
 cam_mat = np.array([
     [189.09167097,   0.0       , 303.24887518],
     [  0.0       , 189.09167097, 238.29592283],
@@ -39,17 +40,21 @@ cam_rot = np.array([
     [ -1.0,  0.0 ,  0.0 ],
     [  0.0,  0.0 ,  1.0 ]
 ])
-#board properties
+#board properties (hardcoded)
 board_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 board_obj = aruco.CharucoBoard_create(17, 17, 15, 12, board_dict)
-board_cent = np.transpose([np.sum(board_obj.objPoints[63], 0)/4])
-board_offs = Pose2D( 1.1, 0.2, 0.005 )
+board_offs_x = -0.2; board_offs_y = -1.1; board_offs_theta = -0.005 #offsets in board frame
+#board properties (calculated)
+board_cent = np.transpose([np.sum(board_obj.objPoints[63], 0)/4]) - np.array([[board_offs_x],[board_offs_y],[0.0]])
 board_rot = np.array([
     [  1.0,  0.0 ,  0.0 ],
     [  0.0, -1.0 ,  0.0 ],
     [  0.0,  0.0 , -1.0 ]
-])
-
+]).dot( np.array([
+    [  np.cos(board_offs_theta), -np.sin(board_offs_theta) ,  0.0 ],
+    [  np.sin(board_offs_theta),  np.cos(board_offs_theta) ,  0.0 ],
+    [  0.0,  0.0 , 1.0 ]
+]) )
 
 #program entry point
 def main():
@@ -134,25 +139,22 @@ def main():
             elif chs_num < 6:  rvec = mrk_rvec.copy();  tvec = mrk_tvec.copy()
             else:              rvec = chs_rvec.copy();  tvec = chs_tvec.copy()
             #calculate plate odometry relative to drone
-            odom_rel_pos = cam_rot.dot( tvec + np.matmul(cv2.Rodrigues(rvec)[0], board_cent) )
+            odom_rel_pos = cam_rot.dot( tvec + np.matmul(cv2.Rodrigues(rvec)[0], board_cent) ) /1000.0
             odom_rel_mat = np.linalg.multi_dot([cam_rot, cv2.Rodrigues(rvec)[0], board_rot, cam_rot.transpose()])
-            odom_rel_quat = quaternion_from_matrix(odom_rel_mat)
-            odom_rel_rpy = euler_from_quaternion(odom_rel_quat[0],odom_rel_quat[1],odom_rel_quat[2],odom_rel_quat[3])
-            odom_rel_yaw = odom_rel_rpy[2]
+            odom_rel_yaw = yaw_from_matrix(odom_rel_mat)
+            if mrk_num == 0: odom_rel_pos = np.zeros((3,1)); odom_rel_yaw = 0.0
             #calculate drone odometry relative to world
-            odom_drone_quat = odom_drone.orientation
-            odom_drone_rpy = euler_from_quaternion(odom_drone_quat.x,odom_drone_quat.y,odom_drone_quat.z,odom_drone_quat.w)
-            odom_drone_yaw = odom_drone_rpy[2]
+            odom_drone_pos = array_from_xyz(odom_drone.position)
+            odom_drone_quat = array_from_xyzw(odom_drone.orientation)
+            odom_drone_yaw = yaw_from_quaternion(odom_drone_quat)
             #calculate drone odometry relative to world
-            odom_plate.x = odom_drone.position.x + (odom_rel_pos[0][0] - board_offs.x)/1000.0
-            odom_plate.y = odom_drone.position.y + (odom_rel_pos[1][0] - board_offs.y)/1000.0
-            odom_plate.theta = odom_drone_yaw + odom_rel_yaw - board_offs.theta
-            #revert to "none" mode if no marker was found
-            if mrk_num == 0:
-                odom_plate.x = odom_drone.position.x
-                odom_plate.y = odom_drone.position.y
-                odom_plate.theta = odom_drone_yaw
-                rospy.logwarn("failed to find markers")
+            odom_plate.x = odom_drone_pos[0][0] + odom_rel_pos[0][0] + cam_offs_x
+            odom_plate.y = odom_drone_pos[1][0] + odom_rel_pos[1][0] + cam_offs_y
+            odom_plate.theta = odom_drone_yaw + odom_rel_yaw
+            #throw warning if no markers were found
+            if mrk_num == 0: rospy.logwarn("failed to find markers")
+
+
             #display detection result
             #print(odom_plate)
             #frame_orig = aruco.drawDetectedMarkers(frame_orig.copy(), mrk_crn, mrk_ids)
@@ -183,28 +185,13 @@ def shutdown():
 
 ################################################################################
 
-#calculate euler angles from quaternion
-def euler_from_quaternion(x, y, z, w):
-    t0 = +2.0 * (w * x + y * z)
-    t1 = +1.0 - 2.0 * (x * x + y * y)
-    roll_x = math.atan2(t0, t1)
-    t2 = +2.0 * (w * y - z * x)
-    t2 = +1.0 if t2 > +1.0 else t2
-    t2 = -1.0 if t2 < -1.0 else t2
-    pitch_y = math.asin(t2)
-    t3 = +2.0 * (w * z + x * y)
-    t4 = +1.0 - 2.0 * (y * y + z * z)
-    yaw_z = math.atan2(t3, t4)
-    return roll_x, pitch_y, yaw_z # in radians
-
-#calculate quaternion from rotation matrix
-def quaternion_from_matrix(m):
-    w = 0.5* np.sqrt( m[0][0]+m[1][1]+m[2][2]+1 )
-    x = 0.5* np.sign(m[2][1]-m[1][2])*np.sqrt( m[0][0]-m[1][1]-m[2][2]+1 )
-    y = 0.5* np.sign(m[0][2]-m[2][0])*np.sqrt( m[1][1]-m[2][2]-m[0][0]+1 )
-    z = 0.5* np.sign(m[1][0]-m[0][1])*np.sqrt( m[2][2]-m[0][0]-m[1][1]+1 )
-    return x, y, z, w
-
+#return array version particular objects
+def array_from_xyz(obj): return np.array([[obj.x], [obj.y], [obj.z]])
+def array_from_xyzw(obj): return [obj.x, obj.y, obj.z, obj.w]
+#calculate yaw angle from quaternion
+def yaw_from_quaternion(q): return math.atan2( 2.0 * (q[3]*q[2] + q[0]*q[1]) , 1.0 - 2.0*(q[1]*q[1] + q[2]*q[2]) )
+#calculate yaw angle from matrix
+def yaw_from_matrix(m): return math.atan2(m[1][0],m[0][0])
 
 if __name__ == '__main__':
     main()
