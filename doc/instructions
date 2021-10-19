@@ -19,6 +19,10 @@ enable ssh
 
 install dynamixel sdk
   sudo apt-get install ros-melodic-dynamixel-sdk
+  sudo usermod -a -G dialout $USER
+
+give permission to access camera
+  sudo usermod -a -G video $USER
 
 clean compile
   cd catkin_ws

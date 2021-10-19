@@ -1,10 +1,18 @@
 <launch>
 
+  <!-- outgoing/incoming topic names -->
+  <arg name="odometry_drone" value="/ouzel/msf_core/odometry /marker/odometry_drone" />  <!-- topic name of drone odometry -->
+  <arg name="odometry_plate" value="/plate/vrpn_client/estimated_odometry" />            <!-- (optional) topic name of plate odometry -->
+  <arg name="setpoint_drone" value="/marker/setpoint_drone /ouzel/command/trajectory" /> <!-- topic name of drone setpoint -->
+
+  <!-- marker namespace -->
   <group ns="marker">
 
-    <!-- plate node: odometry_drone & [camera] -> odometry_plate -->
-    <node name="plate" pkg="marker" type="plate.py" output="screen">
+    <!-- camera node: odometry_drone & [camera] -> odometry_plate -->
+    <node name="camera" pkg="marker" type="camera.py" output="screen">
       <param name="rate" value="50"/>                 <!-- [Hz] rate at which plate odometry is published -->
+      <param name="mode" value="camera"/>             <!-- plate tracking mode: "camera", "vicon", "none" -->
+      <param name="vicon_topic" value="$(arg odometry_plate)"/>  <!-- vicon odometry topic of plate. for mode="vicon" -->
     </node>
 
     <!-- planner node: odometry_drone & odometry_plate -> setpoint_drone & setpoint_plate & draw -->
@@ -20,7 +28,7 @@
 
     <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->
     <node name="wheels" pkg="marker" type="wheels.py" output="screen">
-      <param name="rate" value="20"/>                 <!-- [Hz] rate at which wheel commands are updated -->
+      <param name="rate" value="25"/>                 <!-- [Hz] rate at which wheel commands are updated -->
       <param name="DXL_ID1" value="21"/>              <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
       <param name="DXL_ID2" value="22"/>              <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
       <param name="DXL_ID3" value="23"/>              <!-- ID of dynamixel motor 3 (at 30deg from x-axis) -->
@@ -45,8 +53,8 @@
 
   <!-- relays that connect marker namespace to drone namespace -->
   <group ns="relays" if="$(eval env('USER')=='ouzel')">
-    <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="/ouzel/msf_core/odometry /marker/odometry_drone"/>
-    <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="/marker/setpoint_drone /ouzel/command/trajectory"/>
+    <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="$(arg odometry_drone)"/>
+    <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="$(arg setpoint_drone)"/>
   </group>
 
 </launch>
