@@ -22,8 +22,9 @@ import pandas as pd
 
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Pose2D, Pose
+from marker.msg import StatePlate
 
+################################################################################
 
 #camera properties
 cam_offs_x = 0.0; cam_offs_y = 0.0;
@@ -56,6 +57,8 @@ board_rot = np.array([
     [  0.0,  0.0 , 1.0 ]
 ]) )
 
+################################################################################
+
 #program entry point
 def main():
 
@@ -70,7 +73,7 @@ def main():
     rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
     if param_mode=="vicon": rospy.Subscriber(param_vicon_topic, Odometry, callback_odom_plate_vicon)
     #initialize publishers
-    global pub_odom_plate; pub_odom_plate = rospy.Publisher('odometry_plate', Pose2D, queue_size=256)
+    global pub_odom_plate; pub_odom_plate = rospy.Publisher('odometry_plate', StatePlate, queue_size=256)
 
     #initialize camera
     if param_mode=="camera":
@@ -92,34 +95,45 @@ def main():
         cam_grab_thread.daemon = True
         cam_grab_thread.start()
         rospy.sleep(0.1)
-
+        #init variable used to calculate camera velocity
+        odom_rel_pos_prev = np.zeros((3,1));  odom_rel_yaw_prev = 0.0
+        odom_rel_dpos_prev = np.zeros((3,1)); odom_rel_dyaw_prev = 0.0
+        odom_rel_alpha = 0.3 #weight of new data for vel smoothing
 
     #run plate tracker
     rate = rospy.Rate(param_rate)
     while not rospy.is_shutdown():
-        odom_plate = Pose2D()
+        odom_plate = StatePlate()
+        odom_plate.header.stamp = rospy.Time.now()
+        odom_plate.header.frame_id ='world'
 
         # "none" mode: set plate position as equal to drone position
         if param_mode == "none":
             #get drone yaw
-            odom_drone_quat = odom_drone.orientation
-            odom_drone_rpy = euler_from_quaternion(odom_drone_quat.x,odom_drone_quat.y,odom_drone_quat.z,odom_drone_quat.w)
-            odom_drone_yaw = odom_drone_rpy[2]
+            odom_drone_quat = array_from_xyzw(odom_drone.pose.pose.orientation)
+            odom_drone_yaw = yaw_from_quaternion(odom_drone_quat)
             #calculate plate odometry
-            odom_plate.x = odom_drone.position.x
-            odom_plate.y = odom_drone.position.y
-            odom_plate.theta = odom_drone_yaw
+            odom_plate.pos.x = odom_drone.pose.pose.position.x
+            odom_plate.pos.y = odom_drone.pose.pose.position.y
+            odom_plate.pos.theta = odom_drone_yaw
+            odom_plate.dz = float("nan")
+            odom_plate.vel.x = odom_drone.twist.twist.linear.x
+            odom_plate.vel.y = odom_drone.twist.twist.linear.y
+            odom_plate.vel.theta = odom_drone.twist.twist.angular.z
 
         # "vicon" mode: use vicon odometry of plate directly
         elif param_mode == "vicon":
-            #get drone yaw
-            odom_plate_quat = odom_plate_vicon.orientation
-            odom_plate_rpy = euler_from_quaternion(odom_plate_quat.x,odom_plate_quat.y,odom_plate_quat.z,odom_plate_quat.w)
-            odom_plate_yaw = odom_plate_rpy[2]
+            #get plate yaw
+            odom_plate_quat = array_from_xyzw(odom_plate_vicon.pose.pose.orientation)
+            odom_plate_yaw = yaw_from_quaternion(odom_plate_quat)
             #calculate plate odometry
-            odom_plate.x = odom_plate_vicon.position.x
-            odom_plate.y = odom_plate_vicon.position.y
-            odom_plate.theta = odom_plate_yaw
+            odom_plate.pos.x = odom_plate_vicon.pose.pose.position.x
+            odom_plate.pos.y = odom_plate_vicon.pose.pose.position.y
+            odom_plate.pos.theta = odom_plate_yaw
+            odom_plate.dz = float("nan")
+            odom_plate.vel.x = odom_plate_vicon.twist.twist.linear.x
+            odom_plate.vel.y = odom_plate_vicon.twist.twist.linear.y
+            odom_plate.vel.theta = odom_plate_vicon.twist.twist.angular.z
 
         # "camera" mode: use camera and charuco markers for plate odometry
         elif param_mode == "camera":
@@ -138,46 +152,58 @@ def main():
             if mrk_num == 0:   rvec = np.zeros((3, 1)); tvec = np.zeros((3, 1))
             elif chs_num < 6:  rvec = mrk_rvec.copy();  tvec = mrk_tvec.copy()
             else:              rvec = chs_rvec.copy();  tvec = chs_tvec.copy()
-            #calculate plate odometry relative to drone
+            #calculate plate position relative to drone
             odom_rel_pos = cam_rot.dot( tvec + np.matmul(cv2.Rodrigues(rvec)[0], board_cent) ) /1000.0
             odom_rel_mat = np.linalg.multi_dot([cam_rot, cv2.Rodrigues(rvec)[0], board_rot, cam_rot.transpose()])
             odom_rel_yaw = yaw_from_matrix(odom_rel_mat)
             if mrk_num == 0: odom_rel_pos = np.zeros((3,1)); odom_rel_yaw = 0.0
-            #calculate drone odometry relative to world
-            odom_drone_pos = array_from_xyz(odom_drone.position)
-            odom_drone_quat = array_from_xyzw(odom_drone.orientation)
+            #calculate plate velocity relative to drone
+            odom_rel_dpos = odom_rel_alpha*param_rate*(odom_rel_pos-odom_rel_pos_prev) + (1.0-odom_rel_alpha)*odom_rel_dpos_prev
+            odom_rel_dyaw = odom_rel_alpha*param_rate*(odom_rel_yaw-odom_rel_yaw_prev) + (1.0-odom_rel_alpha)*odom_rel_dyaw_prev
+            odom_rel_pos_prev = odom_rel_pos; odom_rel_dpos_prev = odom_rel_dpos
+            odom_rel_yaw_prev = odom_rel_yaw; odom_rel_dyaw_prev = odom_rel_dyaw
+            #calculate drone position relative to world
+            odom_drone_pos = array_from_xyz(odom_drone.pose.pose.position)
+            odom_drone_quat = array_from_xyzw(odom_drone.pose.pose.orientation)
             odom_drone_yaw = yaw_from_quaternion(odom_drone_quat)
-            #calculate drone odometry relative to world
-            odom_plate.x = odom_drone_pos[0][0] + odom_rel_pos[0][0] + cam_offs_x
-            odom_plate.y = odom_drone_pos[1][0] + odom_rel_pos[1][0] + cam_offs_y
-            odom_plate.theta = odom_drone_yaw + odom_rel_yaw
-            #throw warning if no markers were found
-            if mrk_num == 0: rospy.logwarn("failed to find markers")
-
+            odom_drone_dpos = array_from_xyz(odom_drone.twist.twist.linear)
+            odom_drone_dyaw = odom_drone.twist.twist.angular.z
+            #calculate plate position relative to world
+            odom_plate.pos.x = odom_drone_pos[0][0] + odom_rel_pos[0][0] + cam_offs_x
+            odom_plate.pos.y = odom_drone_pos[1][0] + odom_rel_pos[1][0] + cam_offs_y
+            odom_plate.pos.theta = odom_drone_yaw + odom_rel_yaw
+            odom_plate.dz = odom_rel_pos[2][0]
+            odom_plate.vel.x = odom_drone_dpos[0][0] + odom_rel_dpos[0][0]
+            odom_plate.vel.y = odom_drone_dpos[1][0] + odom_rel_dpos[1][0]
+            odom_plate.vel.theta = odom_drone_dyaw + odom_rel_dyaw
 
             #display detection result
             #print(odom_plate)
             #frame_orig = aruco.drawDetectedMarkers(frame_orig.copy(), mrk_crn, mrk_ids)
-            #frame_marker = aruco.drawDetectedCornersCharuco(frame_orig.copy(), chs_crn, chs_ids)
-            #plt.figure();plt.imshow(frame_marker);plt.show()
+            #frame_orig = aruco.drawDetectedCornersCharuco(frame_orig.copy(), chs_crn, chs_ids)
+            #plt.figure();plt.imshow(frame_orig);plt.show()
 
         #publish plate odometry
-        pub_odom_plate.publish(odom_plate)
+        if param_mode == "camera" and mrk_num == 0:
+            rospy.logwarn("failed to find markers. no plate odometry published")
+        else:
+            pub_odom_plate.publish(odom_plate)
 
         rate.sleep()
 
+################################################################################
 
 #callback for drone odometry topic
-odom_drone = Pose();
-odom_drone.orientation.w = 1.0
+odom_drone = Odometry();
+odom_drone.pose.pose.orientation.w = 1.0
 def callback_odom_drone(odom_drone_new):
-    global odom_drone; odom_drone = odom_drone_new.pose.pose
+    global odom_drone; odom_drone = odom_drone_new
 
 #callback for plate vicon odometry topic
-odom_plate_vicon = Pose();
-odom_plate_vicon.orientation.w = 1.0
+odom_plate_vicon = Odometry();
+odom_plate_vicon.pose.pose.orientation.w = 1.0
 def callback_odom_plate_vicon(odom_plate_vicon_new):
-    global odom_plate_vicon; odom_plate_vicon = odom_plate_vicon_new.pose.pose
+    global odom_plate_vicon; odom_plate_vicon = odom_plate_vicon_new
 
 #callback for  node shutdown
 def shutdown():
@@ -192,6 +218,8 @@ def array_from_xyzw(obj): return [obj.x, obj.y, obj.z, obj.w]
 def yaw_from_quaternion(q): return math.atan2( 2.0 * (q[3]*q[2] + q[0]*q[1]) , 1.0 - 2.0*(q[1]*q[1] + q[2]*q[2]) )
 #calculate yaw angle from matrix
 def yaw_from_matrix(m): return math.atan2(m[1][0],m[0][0])
+
+################################################################################
 
 if __name__ == '__main__':
     main()

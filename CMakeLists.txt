@@ -9,5 +9,6 @@ cs_install()
 cs_install_scripts(scripts/drawer.py)
 cs_install_scripts(scripts/wheels.py)
 cs_install_scripts(scripts/planner.py)
+cs_install_scripts(scripts/camera.py)
 
 cs_export()

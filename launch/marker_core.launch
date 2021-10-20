@@ -2,7 +2,7 @@
 
   <!-- outgoing/incoming topic names -->
   <arg name="odometry_drone" value="/ouzel/msf_core/odometry /marker/odometry_drone" />  <!-- topic name of drone odometry -->
-  <arg name="odometry_plate" value="/plate/vrpn_client/estimated_odometry" />            <!-- (optional) topic name of plate odometry -->
+  <arg name="odometry_plate" value="/plate/vrpn_client/estimated_odometry" />            <!-- topic name of plate odometry (only used if camera mode="vicon") -->
   <arg name="setpoint_drone" value="/marker/setpoint_drone /ouzel/command/trajectory" /> <!-- topic name of drone setpoint -->
 
   <!-- marker namespace -->
@@ -18,12 +18,12 @@
     <!-- planner node: odometry_drone & odometry_plate -> setpoint_drone & setpoint_plate & draw -->
     <node name="planner" pkg="marker" type="planner.py" output="screen">
       <param name="rate" value="50"/>                 <!-- [Hz] rate at which setpoint topic is published -->
+      <param name="comp_drone_err" value="1"/>        <!-- [1 or 0] flag if tracking error of drone is to be compensated -->
       <param name="max_vel" value="50.0"/>            <!-- [mm/s] max velocity in trajectory -->
       <param name="max_acc" value="25.0"/>            <!-- [mm/s^2]max acceleration in trajectory -->
       <param name="wait_draw" value="0.5"/>           <!-- [s] time to wait after draw on/off command is sent -->
       <param name="wait_corner" value="0.5"/>         <!-- [s] time to wait at sharp corner -->
       <param name="tresh_corner" value="2.0"/>        <!-- [deg] angle treshold for a corner to be sharp -->
-      <param name="comp_drone_err" value="1"/>        <!-- [1 or 0] flag if tracking error of drone is to be compensated -->
     </node>
 
     <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->

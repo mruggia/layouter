@@ -9,7 +9,8 @@ from copy import deepcopy
 import rospy
 
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Transform, Twist, Pose2D, Pose, Quaternion, Point, Vector3
+from marker.msg import StatePlate
+from geometry_msgs.msg import Transform, Twist, Pose, Quaternion, Point, Vector3
 from trajectory_msgs.msg import MultiDOFJointTrajectory, MultiDOFJointTrajectoryPoint
 from std_msgs.msg import Bool
 
@@ -30,16 +31,6 @@ from marker.srv import Execute,ExecuteResponse, Home,HomeResponse
 def main():
     #initialize node
     rospy.init_node('planner')
-    #initialize subscriptions
-    rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
-    rospy.Subscriber('odometry_plate', Pose2D, callback_odom_plate)
-    rospy.Subscriber('setpoint_drone', MultiDOFJointTrajectory, callback_setp_drone)
-    #initialize services
-    rospy.Service('execute', Execute, handle_execute)
-    #initialize publishers
-    global pub_draw; pub_draw = rospy.Publisher('draw', Bool, queue_size=256)
-    global pub_setpoint_drone; pub_setpoint_drone = rospy.Publisher('setpoint_drone', MultiDOFJointTrajectory, queue_size=256)
-    global pub_setpoint_plate; pub_setpoint_plate = rospy.Publisher('setpoint_plate', Pose2D, queue_size=256)
     #load parameters
     global param_rate; param_rate = float(rospy.get_param("~rate"))
     global param_max_vel; param_max_vel = float(rospy.get_param("~max_vel"))
@@ -48,6 +39,16 @@ def main():
     global param_wait_corner; param_wait_corner = float(rospy.get_param("~wait_corner"))
     global param_tresh_corner; param_tresh_corner = float(rospy.get_param("~tresh_corner"))
     global param_comp_drone_err; param_comp_drone_err = bool(int(rospy.get_param("~comp_drone_err")))
+    #initialize subscriptions
+    rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
+    rospy.Subscriber('odometry_plate', StatePlate, callback_odom_plate)
+    if param_comp_drone_err: rospy.Subscriber('setpoint_drone', MultiDOFJointTrajectory, callback_setp_drone)
+    #initialize services
+    rospy.Service('execute', Execute, handle_execute)
+    #initialize publishers
+    global pub_draw; pub_draw = rospy.Publisher('draw', Bool, queue_size=256)
+    global pub_setpoint_drone; pub_setpoint_drone = rospy.Publisher('setpoint_drone', MultiDOFJointTrajectory, queue_size=256)
+    global pub_setpoint_plate; pub_setpoint_plate = rospy.Publisher('setpoint_plate', StatePlate, queue_size=256)
     #run until node is shut down
     rospy.spin()
 
@@ -58,7 +59,7 @@ def callback_odom_drone(odom_drone):
     global odom_drone_curr; odom_drone_curr = deepcopy(odom_drone.pose.pose)
 
 #callback for plate odometry topic
-odom_plate_curr = Pose2D()
+odom_plate_curr = StatePlate()
 def callback_odom_plate(odom_plate):
     global odom_plate_curr; odom_plate_curr = deepcopy(odom_plate)
 
@@ -301,10 +302,16 @@ def gcode_publish( pos, vel, acc):
     setpoint_drone.points.append(point_drone)
     pub_setpoint_drone.publish(setpoint_drone)
 
-    setpoint_plate = Pose2D()
-    setpoint_plate.x = odom_plate_home.x + pos[0]/1000.0
-    setpoint_plate.y = odom_plate_home.y + pos[1]/1000.0
-    setpoint_plate.theta = odom_plate_home.theta
+    setpoint_plate = StatePlate()
+    setpoint_plate.header.stamp = rospy.Time.now()
+    setpoint_plate.header.frame_id ='world'
+    setpoint_plate.pos.x = odom_plate_home.pos.x + pos[0]/1000.0
+    setpoint_plate.pos.y = odom_plate_home.pos.y + pos[1]/1000.0
+    setpoint_plate.pos.theta = odom_plate_home.pos.theta
+    setpoint_plate.dz = float("nan")
+    setpoint_plate.vel.x = vel[0]/1000.0
+    setpoint_plate.vel.y = vel[1]/1000.0
+    setpoint_plate.vel.theta = 0.0
     pub_setpoint_plate.publish(setpoint_plate)
 
 
@@ -317,8 +324,8 @@ def set_home():
 
     #calculate drone home form plate home
     odom_drone_home = Pose()
-    odom_drone_home.position = Point( odom_plate_home.x, odom_plate_home.y, odom_drone_curr.position.z )
-    odom_drone_home.orientation = Quaternion( 0, 0, math.sin(odom_plate_home.theta/2), math.cos(odom_plate_home.theta/2))
+    odom_drone_home.position = Point( odom_plate_home.pos.x, odom_plate_home.pos.y, odom_drone_curr.position.z )
+    odom_drone_home.orientation = Quaternion( 0, 0, math.sin(odom_plate_home.pos.theta/2), math.cos(odom_plate_home.pos.theta/2))
 
     #compensate home pos for furrent tracking error (if requested)
     if param_comp_drone_err:

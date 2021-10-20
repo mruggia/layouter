@@ -6,7 +6,7 @@ from dynamixel_sdk import PortHandler, PacketHandler, GroupSyncWrite, GroupSyncR
 
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Pose2D
+from marker.msg import StatePlate
 from marker.srv import Home,HomeResponse
 
 ################################################################################
@@ -18,8 +18,8 @@ def main():
     rospy.init_node('wheels')
     rospy.on_shutdown(dxl_off)
     #initialize subscriptions
-    rospy.Subscriber('setpoint_plate', Pose2D, setpoint_plate_callback)
-    rospy.Subscriber('odometry_plate', Pose2D, odometry_plate_callback)
+    rospy.Subscriber('setpoint_plate', StatePlate, setpoint_plate_callback)
+    rospy.Subscriber('odometry_plate', StatePlate, odometry_plate_callback)
     #initialize services
     rospy.Service('home', Home, home_handle)
     #load parameters
@@ -48,8 +48,8 @@ def main():
     while not rospy.is_shutdown():
 
         #calculate motor goal positions
-        rot_x = math.cos(-setp_plate.theta)*(setp_plate.x-home_plate.x) - math.sin(-setp_plate.theta)*(setp_plate.y-home_plate.y)
-        rot_y = math.sin(-setp_plate.theta)*(setp_plate.x-home_plate.x) + math.cos(-setp_plate.theta)*(setp_plate.y-home_plate.y)
+        rot_x = math.cos(-setp_plate.pos.theta)*(setp_plate.pos.x-home_plate.pos.x) - math.sin(-setp_plate.pos.theta)*(setp_plate.pos.y-home_plate.pos.y)
+        rot_y = math.sin(-setp_plate.pos.theta)*(setp_plate.pos.x-home_plate.pos.x) + math.cos(-setp_plate.pos.theta)*(setp_plate.pos.y-home_plate.pos.y)
         goal1 = -int(( COS_240*rot_x + SIN_240*rot_y )*DXL_PULSE_PER_M)
         goal2 = -int(( COS_000*rot_x + SIN_000*rot_y )*DXL_PULSE_PER_M)
         goal3 = -int(( COS_120*rot_x + SIN_120*rot_y )*DXL_PULSE_PER_M)
@@ -63,21 +63,21 @@ def main():
 ################################################################################
 
 #handle for plate home service
-home_plate = Pose2D()
+home_plate = StatePlate()
 def home_handle(req):
     global home_plate
-    home_plate = deepcopy(req.pose)
+    home_plate = deepcopy(req.home)
     dxl_home()
     return HomeResponse(True)
 
 #callback for plate odometry topic
-odom_plate = Pose2D()
+odom_plate = StatePlate()
 def odometry_plate_callback(odom_plate_new):
     global odom_plate
     odom_plate = deepcopy(odom_plate_new)
 
 #callback for setpoint topic
-setp_plate = Pose2D()
+setp_plate = StatePlate()
 def setpoint_plate_callback(setp_plate_new):
     global setp_plate
     setp_plate = deepcopy(setp_plate_new)
