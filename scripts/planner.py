@@ -14,7 +14,9 @@ from geometry_msgs.msg import Transform, Twist, Pose, Quaternion, Point, Vector3
 from trajectory_msgs.msg import MultiDOFJointTrajectory, MultiDOFJointTrajectoryPoint
 from std_msgs.msg import Bool
 
-from marker.srv import Execute,ExecuteResponse, Home,HomeResponse
+from marker.srv import Execute,ExecuteResponse
+from marker.srv import WheelsStart, WheelsStartResponse
+from marker.srv import WheelsStop, WheelsStopResponse
 
 ################################################################################
 
@@ -43,12 +45,15 @@ def main():
     rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
     rospy.Subscriber('odometry_plate', StatePlate, callback_odom_plate)
     if param_comp_drone_err: rospy.Subscriber('setpoint_drone', MultiDOFJointTrajectory, callback_setp_drone)
-    #initialize services
-    rospy.Service('execute', Execute, handle_execute)
     #initialize publishers
     global pub_draw; pub_draw = rospy.Publisher('draw', Bool, queue_size=256)
     global pub_setpoint_drone; pub_setpoint_drone = rospy.Publisher('setpoint_drone', MultiDOFJointTrajectory, queue_size=256)
     global pub_setpoint_plate; pub_setpoint_plate = rospy.Publisher('setpoint_plate', StatePlate, queue_size=256)
+    #initialize services
+    rospy.Service('execute', Execute, handle_execute)
+    #initialize service proxys
+    global srv_wheels_start; srv_wheels_start = rospy.ServiceProxy('wheels_start', WheelsStart)
+    global srv_wheels_stop;  srv_wheels_stop  = rospy.ServiceProxy('wheels_stop', WheelsStop)
     #run until node is shut down
     rospy.spin()
 
@@ -78,21 +83,16 @@ def handle_execute(req):
 
     #set current state as home
     set_home()
-
+    #start wheels controller
+    srv_wheels_start(odom_plate_home)
     #read gcode file
     gcode = open(os.path.dirname(__file__)+"/../gcode/"+req.filename, 'r').read()
-
     #parse gcode text
     vertices, segments = gcode_parse(gcode)
-
-    #print result
-    #print("vrt: "+str(vertices[0]))
-    #for id in range(len(segments)):
-    #    print("seg: "+str(segments[id]))
-    #    print("vrt: "+str(vertices[id+1]))
-
     #run gcode
     gcode_run(vertices, segments)
+    #stop wheels controller
+    srv_wheels_stop()
 
     return ExecuteResponse(True)
 
@@ -337,9 +337,6 @@ def set_home():
         odom_drone_home.position = _vecAdd( odom_drone_home.position, offs_drone.position )
         odom_drone_home.orientation = _quatMult( offs_drone.orientation, odom_drone_home.orientation )
 
-    #send homing command to wheels
-    srv_home = rospy.ServiceProxy('home', Home)
-    srv_home(odom_plate_home)
 
 ################################################################################
 
