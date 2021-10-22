@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-#load directory to custom opencv library binaries with see3cam support
+#load custom opencv binaries with econ camera support (located in "lib/opencv+econ")
 import os, sys
 if '/lib/opencv+econ' not in os.environ['LD_LIBRARY_PATH']:
     home = os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/..")
@@ -14,39 +14,39 @@ import math
 import numpy as np
 import cv2, PIL, os
 from cv2 import aruco
-
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-import pandas as pd
 
 import rospy
 from nav_msgs.msg import Odometry
 from marker.msg import StatePlate
 
 ################################################################################
+# global variables
 
-#camera properties
+#camera offset relative to drone
 cam_offs_x = 0.0; cam_offs_y = 0.0;
+#camera projection matrix
 cam_mat = np.array([
     [189.09167097,   0.0       , 303.24887518],
     [  0.0       , 189.09167097, 238.29592283],
     [  0.0       ,   0.0       ,   1.0       ]
 ])
+#camera distorsion values
 cam_dis = np.array([
     [ 2.60795135e+00],[ 3.90439304e+00],[-4.19072992e-04],[ 2.97129516e-05],[ 2.12766848e-01],[ 2.65389817e+00],[ 4.01250767e+00],[ 7.48218890e-01],[ 0.00000000e+00],[ 0.00000000e+00],[ 0.00000000e+00],[ 0.00000000e+00],[ 0.00000000e+00],[ 0.00000000e+00]
 ])
+#camera rotation rel to drone frame
 cam_rot = np.array([
     [  0.0,  1.0 ,  0.0 ],
     [ -1.0,  0.0 ,  0.0 ],
     [  0.0,  0.0 ,  1.0 ]
 ])
-#board properties (hardcoded)
-board_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
-board_obj = aruco.CharucoBoard_create(17, 17, 15, 12, board_dict)
-board_offs_x = -0.2; board_offs_y = -1.1; board_offs_theta = -0.005 #offsets in board frame
+#board properties
+board_dict = aruco.Dictionary_get(aruco.DICT_6X6_100)
+board_obj = aruco.CharucoBoard_create(14, 14, 15, 12, board_dict)
+board_offs_x = +0.8; board_offs_y = -3.2; board_offs_theta = -0.007 #offsets in board frame
 #board properties (calculated)
-board_cent = np.transpose([np.sum(board_obj.objPoints[63], 0)/4]) - np.array([[board_offs_x],[board_offs_y],[0.0]])
+board_cent = np.transpose([np.sum(board_obj.objPoints[45], 0)/4]) - np.array([[board_offs_x],[board_offs_y],[0.0]])
 board_rot = np.array([
     [  1.0,  0.0 ,  0.0 ],
     [  0.0, -1.0 ,  0.0 ],
@@ -178,7 +178,6 @@ def main():
             odom_plate.vel.theta = odom_drone_dyaw + odom_rel_dyaw
 
             #display detection result
-            #print(odom_plate)
             #frame_orig = aruco.drawDetectedMarkers(frame_orig.copy(), mrk_crn, mrk_ids)
             #frame_orig = aruco.drawDetectedCornersCharuco(frame_orig.copy(), chs_crn, chs_ids)
             #plt.figure();plt.imshow(frame_orig);plt.show()
@@ -192,6 +191,7 @@ def main():
         rate.sleep()
 
 ################################################################################
+# callbacks
 
 #callback for drone odometry topic
 odom_drone = Odometry();
@@ -210,6 +210,7 @@ def shutdown():
     cap.release()
 
 ################################################################################
+# utility
 
 #return array version particular objects
 def array_from_xyz(obj): return np.array([[obj.x], [obj.y], [obj.z]])

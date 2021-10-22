@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import time
 import math
 import numpy as np
 from copy import deepcopy
@@ -77,6 +76,7 @@ def callback_setp_drone(setp_drone):
     setp_drone_curr.orientation = deepcopy(setp_drone.points[0].transforms[0].rotation)
 
 ################################################################################
+# planner
 
 #handle for trajectory execution service
 def handle_execute(req):
@@ -290,6 +290,7 @@ def gcode_run(vertices, segments):
 def gcode_publish( pos, vel, acc):
     global odom_plate_home, odom_drone_home
 
+    #assemble and publish drone setpoint
     point_drone = MultiDOFJointTrajectoryPoint([Transform()], [Twist()], [Twist(),Twist()], rospy.Time(0))
     point_drone.transforms[0].translation = _PointToVector3(_vecAdd( odom_drone_home.position, Point( pos[0]/1000.0, pos[1]/1000.0, 0.0 ) ))
     point_drone.transforms[0].rotation = deepcopy( odom_drone_home.orientation )
@@ -302,6 +303,7 @@ def gcode_publish( pos, vel, acc):
     setpoint_drone.points.append(point_drone)
     pub_setpoint_drone.publish(setpoint_drone)
 
+    #assemble and publish plate setpoint
     setpoint_plate = StatePlate()
     setpoint_plate.header.stamp = rospy.Time.now()
     setpoint_plate.header.frame_id ='world'
@@ -339,9 +341,12 @@ def set_home():
 
 
 ################################################################################
+# utility
 
+#quaternion inverse
 def _quatInv(quat):
     return Quaternion(quat.x,quat.y,quat.z, -quat.w)
+#quaternion multiplication
 def _quatMult(q1,q2):
     return Quaternion(
         q1.w*q2.x + q1.x*q2.w + q1.y*q2.z - q1.z*q2.y,
@@ -349,14 +354,16 @@ def _quatMult(q1,q2):
         q1.w*q2.z + q1.x*q2.y - q1.y*q2.x + q1.z*q2.w,
         q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z
     )
-
+#add 2 generic vector objects with x,y,z members
 def _vecAdd(v1,v2):
     return Point(v1.x+v2.x, v1.y+v2.y, v1.z+v2.z)
+#subtract 2 generic vector objects with x,y,z members
 def _vecSub(v1,v2):
     return Point(v1.x-v2.x, v1.y-v2.y, v1.z-v2.z)
-
+#convert a "Point" vector to a "Vector3" vector
 def _PointToVector3(point):
     return Vector3(point.x, point.y, point.z)
+#convert a "Vector3" vector to a "Point" vector
 def _Vector3ToPoint(vector):
     return Point(vector.x, vector.y, vector.z)
 
