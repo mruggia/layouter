@@ -1,9 +1,9 @@
 <launch>
 
   <!-- outgoing/incoming topic names -->
-  <arg name="odometry_drone" value="/ouzel/msf_core/odometry /marker/odometry_drone" />  <!-- topic name of drone odometry -->
-  <arg name="odometry_plate" value="/plate/vrpn_client/estimated_odometry" />            <!-- topic name of plate odometry (only used if camera mode="vicon") -->
-  <arg name="setpoint_drone" value="/marker/setpoint_drone /ouzel/command/trajectory" /> <!-- topic name of drone setpoint -->
+  <arg name="odometry_drone" value="/ouzel/msf_core/odometry" />              <!-- topic name of drone odometry -->
+  <arg name="odometry_plate" value="/plate/vrpn_client/estimated_odometry" /> <!-- topic name of plate odometry (only used if camera mode="vicon") -->
+  <arg name="setpoint_drone" value="/ouzel/command/trajectory" />             <!-- topic name of drone setpoint -->
 
   <!-- marker namespace -->
   <group ns="marker">
@@ -33,7 +33,8 @@
       <param name="wheel_dia" value="100.0"/>         <!-- [mm] diameter of omni wheels -->
       <!-- controller parameters -->
       <param name="controller" value="p"/>            <!-- controller type: "ff":feed-forward, "p":proportional  -->
-      <param name="ctrl_pos_p" value="6.0"/>          <!-- P gain of proportional position controller -->
+      <param name="ctrl_dz_target" value="0.160"/>    <!-- target for spring compression (not implemented) -->
+      <param name="ctrl_pos_p" value="8.0"/>          <!-- P gain of proportional position controller -->
       <param name="ctrl_ang_p" value="1.5"/>          <!-- P gain of proportional angle controller -->
       <!-- dynamixel parameters -->
       <param name="DXL_ID1" value="21"/>              <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
@@ -57,8 +58,8 @@
 
   <!-- relays that connect marker namespace to drone namespace -->
   <group ns="relays" if="$(eval env('USER')=='ouzel')">
-    <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="$(arg odometry_drone)"/>
-    <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="$(arg setpoint_drone)"/>
+    <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="$(arg odometry_drone) /marker/odometry_drone"/>
+    <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="/marker/setpoint_drone $(arg setpoint_drone)"/>
   </group>
 
 </launch>
