@@ -104,6 +104,7 @@ def wheels_start_handle(req):
 def wheels_stop_handle(req):
     global wheels_running
     wheels_running = False
+    if param_controller =="p": dxl_goal_vel_set(0,0,0)
     return WheelsStopResponse()
 
 ################################################################################
