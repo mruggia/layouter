@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!-- launch omav base station -->
+  <include file="$(find mav_startup)/launch/pixhawk/omav/omav_base_station.launch">
+    <arg name="use_vicon_workpiece" value="false"/>
+  </include>
+
+</launch>

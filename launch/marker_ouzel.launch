@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!-- launch ouzel core -->
+  <include file="$(find mav_startup)/launch/pixhawk/ouzel/ouzel_core.launch"/>
+
+  <!-- overwrite vehicle config with local file -->
+  <rosparam file="$(find marker)/launch/vehicle.yaml" ns="ouzel/controller_node"/>
+  <!-- <group ns="ouzel/controller_node/vehicle_parameters">
+    <param name="enable_update"      value="true" />
+    <param name="mass"               value="5.2" />
+    <param name="com_offset_x"       value="0.002" />
+    <param name="com_offset_y"       value="0.001" />
+    <param name="com_offset_z"       value="0.050" />
+    <param name="inertia_xx"         value="0.06" />
+    <param name="inertia_yy"         value="0.06" />
+    <param name="inertia_zz"         value="0.14" />
+  </group> -->
+
+  <!-- launch vicon plate topic -->
+  <include file="$(find ros_vrpn_client)/launch/asl_vicon.launch">
+      <arg name="object_name" value="plate" />
+  </include>
+
+  <!-- launch marker core -->
+  <include file="$(find marker)/launch/marker_core.launch">
+    <!-- outgoing/incoming topic names -->
+    <arg name="odometry_drone"       value="/ouzel/msf_core/odometry" />              <!-- topic name of drone odometry -->
+    <arg name="setpoint_drone"       value="/ouzel/command/trajectory" />             <!-- topic name of drone setpoint -->
+    <arg name="odometry_plate_vicon" value="/plate/vrpn_client/estimated_odometry" /> <!-- topic name of plate odometry (only used if camera mode="vicon") -->
+    <!-- device paths -->
+    <arg name="device_drawer"        value="/dev/ttyACM1" />   <!-- drawer servo -->
+    <arg name="device_wheels"        value="/dev/ttyUSB1" />   <!-- wheels dynamixels -->
+  </include>
+
+</launch>

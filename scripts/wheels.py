@@ -28,7 +28,7 @@ def main():
     global param_controller; param_controller = rospy.get_param("~controller")
     global param_ctrl_pos_p; param_ctrl_pos_p = rospy.get_param("~ctrl_pos_p")
     global param_ctrl_ang_p; param_ctrl_ang_p = rospy.get_param("~ctrl_ang_p")
-    global DXL_DEV; DXL_DEV = rospy.get_param("~DXL_DEV")
+    global DXL_DEV; DXL_DEV = rospy.get_param("device_wheels")
     global DXL_ID1; DXL_ID1 = int(rospy.get_param("~DXL_ID1"))
     global DXL_ID2; DXL_ID2 = int(rospy.get_param("~DXL_ID2"))
     global DXL_ID3; DXL_ID3 = int(rospy.get_param("~DXL_ID3"))

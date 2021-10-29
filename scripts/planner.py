@@ -41,12 +41,12 @@ def main():
     global param_tresh_corner; param_tresh_corner = float(rospy.get_param("~tresh_corner"))
     global param_comp_drone_err; param_comp_drone_err = bool(int(rospy.get_param("~comp_drone_err")))
     #initialize subscriptions
-    rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
+    rospy.Subscriber(rospy.get_param('odometry_drone'), Odometry, callback_odom_drone)
     rospy.Subscriber('odometry_plate', StatePlate, callback_odom_plate)
-    if param_comp_drone_err: rospy.Subscriber('setpoint_drone', MultiDOFJointTrajectory, callback_setp_drone)
+    if param_comp_drone_err: rospy.Subscriber(rospy.get_param('setpoint_drone'), MultiDOFJointTrajectory, callback_setp_drone)
     #initialize publishers
     global pub_draw; pub_draw = rospy.Publisher('draw', Bool, queue_size=256)
-    global pub_setpoint_drone; pub_setpoint_drone = rospy.Publisher('setpoint_drone', MultiDOFJointTrajectory, queue_size=256)
+    global pub_setpoint_drone; pub_setpoint_drone = rospy.Publisher(rospy.get_param('setpoint_drone'), MultiDOFJointTrajectory, queue_size=256)
     global pub_setpoint_plate; pub_setpoint_plate = rospy.Publisher('setpoint_plate', StatePlate, queue_size=256)
     #initialize services
     rospy.Service('execute', Execute, handle_execute)

@@ -22,7 +22,7 @@ def main():
     rospy.on_shutdown(shutdown)
     rospy.Subscriber('draw', Bool, draw_callback)
     #load parameters
-    device = rospy.get_param("~device")
+    device = rospy.get_param("device_drawer")
 
     #connect to marker
     global serial; serial = serial.Serial(device)

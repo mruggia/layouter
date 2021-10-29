@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <!-- launch marker core -->
+  <include file="$(find marker)/launch/marker_core.launch">
+    <!-- device paths -->
+    <arg name="device_drawer" value="/dev/ttyACM1" />   <!-- drawer servo -->
+    <arg name="device_wheels" value="/dev/ttyUSB0" />   <!-- wheels dynamixels -->
+  </include>
+
+</launch>

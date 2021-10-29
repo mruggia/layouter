@@ -62,10 +62,10 @@ def main():
     #load parameters
     global param_rate; param_rate = float(rospy.get_param("~rate"))
     global param_mode; param_mode = rospy.get_param("~mode")
-    global param_vicon_topic; param_vicon_topic = rospy.get_param("~vicon_topic")
     #initialize subscriptions
-    rospy.Subscriber('odometry_drone', Odometry, callback_odom_drone)
-    if param_mode=="vicon": rospy.Subscriber(param_vicon_topic, Odometry, callback_odom_plate_vicon)
+    rospy.Subscriber(rospy.get_param('odometry_drone'), Odometry, callback_odom_drone)
+    if param_mode=="vicon":
+        rospy.Subscriber(rospy.get_param("odometry_plate_vicon"), Odometry, callback_odom_plate_vicon)
     #initialize publishers
     global pub_odom_plate; pub_odom_plate = rospy.Publisher('odometry_plate', StatePlate, queue_size=256)
     global pub_odom_plate_abs; pub_odom_plate_abs = rospy.Publisher('odometry_plate_abs', Odometry, queue_size=256) #for debugging

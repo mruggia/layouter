@@ -1,65 +1,66 @@
+<?xml version="1.0"?>
+
 <launch>
 
   <!-- outgoing/incoming topic names -->
-  <arg name="odometry_drone" value="/ouzel/msf_core/odometry" />              <!-- topic name of drone odometry -->
-  <arg name="odometry_plate" value="/plate/vrpn_client/estimated_odometry" /> <!-- topic name of plate odometry (only used if camera mode="vicon") -->
-  <arg name="setpoint_drone" value="/ouzel/command/trajectory" />             <!-- topic name of drone setpoint -->
+  <arg name="odometry_drone"       default="odometry_drone" />        <!-- topic name of drone odometry -->
+  <arg name="setpoint_drone"       default="setpoint_drone" />        <!-- topic name of drone setpoint -->
+  <arg name="odometry_plate_vicon" default="odometry_plate_vicon" />  <!-- topic name of plate odometry (only used if camera mode="vicon") -->
+  <!-- device paths -->
+  <arg name="device_drawer"        default="" />                      <!-- drawer servo -->
+  <arg name="device_wheels"        default="" />                      <!-- wheels dynamixels -->
+
 
   <!-- marker namespace -->
   <group ns="marker">
 
+    <!-- save arg as param in marker namespace -->
+    <param name="odometry_drone"       value="$(arg odometry_drone)" />
+    <param name="setpoint_drone"       value="$(arg setpoint_drone)" />
+    <param name="odometry_plate_vicon" value="$(arg odometry_plate_vicon)" />
+    <param name="device_drawer"        value="$(arg device_drawer)" />
+    <param name="device_wheels"        value="$(arg device_wheels)" />
+
     <!-- camera node: odometry_drone & [camera] -> odometry_plate -->
-    <node name="camera" pkg="marker" type="camera.py" output="screen">
-      <param name="rate" value="50"/>                 <!-- [Hz] rate at which plate odometry is published -->
-      <param name="mode" value="camera"/>             <!-- plate tracking mode: "camera", "vicon", "none" -->
-      <param name="vicon_topic" value="$(arg odometry_plate)"/>  <!-- vicon odometry topic of plate. for mode="vicon" -->
+    <node name="camera" pkg="marker" type="camera.py" output="screen" clear_params="true">
+      <!-- general parameters -->
+      <param name="rate"           value="50"/>             <!-- [Hz] rate at which plate odometry is published -->
+      <param name="mode"           value="camera"/>         <!-- plate tracking mode: "camera", "vicon", "none" -->
     </node>
 
     <!-- planner node: odometry_drone & odometry_plate -> setpoint_drone & setpoint_plate & draw -->
-    <node name="planner" pkg="marker" type="planner.py" output="screen">
-      <param name="rate" value="50"/>                 <!-- [Hz] rate at which setpoint topic is published -->
-      <param name="comp_drone_err" value="1"/>        <!-- [1 or 0] flag if tracking error of drone is to be compensated -->
+    <node name="planner" pkg="marker" type="planner.py" output="screen" clear_params="true">
+      <!-- general parameters -->
+      <param name="rate"           value="50"/>             <!-- [Hz] rate at which setpoint topic is published -->
+      <param name="comp_drone_err" value="1"/>              <!-- [1 or 0] flag if tracking error of drone is to be compensated -->
       <!-- trajectory parameters -->
-      <param name="max_vel" value="50.0"/>            <!-- [mm/s] max velocity in trajectory -->
-      <param name="max_acc" value="25.0"/>            <!-- [mm/s^2]max acceleration in trajectory -->
-      <param name="wait_draw" value="0.5"/>           <!-- [s] time to wait after draw on/off command is sent -->
-      <param name="wait_corner" value="0.5"/>         <!-- [s] time to wait at sharp corner -->
-      <param name="tresh_corner" value="2.0"/>        <!-- [deg] angle treshold for a corner to be sharp -->
+      <param name="max_vel"        value="50.0"/>           <!-- [mm/s] max velocity in trajectory -->
+      <param name="max_acc"        value="25.0"/>           <!-- [mm/s^2]max acceleration in trajectory -->
+      <param name="wait_draw"      value="0.5"/>            <!-- [s] time to wait after draw on/off command is sent -->
+      <param name="wait_corner"    value="0.5"/>            <!-- [s] time to wait at sharp corner -->
+      <param name="tresh_corner"   value="2.0"/>            <!-- [deg] angle treshold for a corner to be sharp -->
     </node>
 
     <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->
-    <node name="wheels" pkg="marker" type="wheels.py" output="screen">
-      <param name="rate" value="50"/>                 <!-- [Hz] rate at which wheel commands are updated -->
-      <param name="wheel_dia" value="100.0"/>         <!-- [mm] diameter of omni wheels -->
+    <node name="wheels" pkg="marker" type="wheels.py" output="screen" clear_params="true">
+      <!-- general parameters -->
+      <param name="rate"           value="50"/>             <!-- [Hz] rate at which wheel commands are updated -->
+      <param name="wheel_dia"      value="100.0"/>          <!-- [mm] diameter of omni wheels -->
       <!-- controller parameters -->
-      <param name="controller" value="p"/>            <!-- controller type: "ff":feed-forward, "p":proportional  -->
-      <param name="ctrl_dz_target" value="0.160"/>    <!-- target for spring compression (not implemented) -->
-      <param name="ctrl_pos_p" value="8.0"/>          <!-- P gain of proportional position controller -->
-      <param name="ctrl_ang_p" value="1.5"/>          <!-- P gain of proportional angle controller -->
+      <param name="controller"     value="p"/>              <!-- controller type: "ff":feed-forward, "p":proportional  -->
+      <param name="ctrl_dz"        value="0.160"/>          <!-- target for spring compression (not implemented) -->
+      <param name="ctrl_pos_p"     value="8.0"/>            <!-- P gain of proportional position controller -->
+      <param name="ctrl_ang_p"     value="1.5"/>            <!-- P gain of proportional angle controller -->
       <!-- dynamixel parameters -->
-      <param name="DXL_ID1" value="21"/>              <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
-      <param name="DXL_ID2" value="22"/>              <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
-      <param name="DXL_ID3" value="23"/>              <!-- ID of dynamixel motor 3 (at 30deg from x-axis) -->
-      <param name="DXL_DEV" value="/dev/ttyUSB0" if="$(eval env('USER')=='marker')"/>   <!-- device path for test platform -->
-      <param name="DXL_DEV" value="/dev/ttyUSB1" if="$(eval env('USER')=='ouzel')"/>    <!-- device path for ouzel drone -->
+      <param name="DXL_ID1"        value="21"/>             <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
+      <param name="DXL_ID2"        value="22"/>             <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
+      <param name="DXL_ID3"        value="23"/>             <!-- ID of dynamixel motor 3 (at 30deg from x-axis) -->
     </node>
 
     <!-- drawer node: draw -> [marker servo] -->
-    <node name="drawer" pkg="marker" type="drawer.py" output="screen">
-      <param name="device" value="/dev/ttyACM1" if="$(eval env('USER')=='marker')"/>   <!-- device path for test platform -->
-      <param name="device" value="/dev/ttyACM1" if="$(eval env('USER')=='ouzel')"/>    <!-- device path ouzel drone -->
-    </node>
-
-  </group>
+    <node name="drawer" pkg="marker" type="drawer.py" output="screen" clear_params="true"/>
 
 
-  <!-- load vehicle parameters used by drone -->
-  <!-- <rosparam command="load" file="vehicle.yaml" ns="/ouzel/controller_node"/> -->
-
-  <!-- relays that connect marker namespace to drone namespace -->
-  <group ns="relays" if="$(eval env('USER')=='ouzel')">
-    <node name="relay_odometry_drone" pkg="topic_tools" type="relay" args="$(arg odometry_drone) /marker/odometry_drone"/>
-    <node name="relay_setpoint_drone" pkg="topic_tools" type="relay" args="/marker/setpoint_drone $(arg setpoint_drone)"/>
   </group>
 
 </launch>
