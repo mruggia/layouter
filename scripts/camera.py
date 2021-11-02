@@ -23,17 +23,23 @@ from marker.msg import StatePlate
 ################################################################################
 # global variables
 
-#camera offset relative to drone (mm)
-cam_offs = np.array([ [0.0], [0.0], [113.8] ])
 #camera projection matrix
 cam_mat = np.array( [[188.0788825250866, 0.0, 306.02723567007456], [0.0, 188.0788825250866, 241.36289029536422], [0.0, 0.0, 1.0]] )
 #camera distorsion values
 cam_dis = np.array( [[1.1252891735957404], [0.2145961789329671], [-0.00025101792193571107], [5.1503679835613685e-05], [0.0023939677142179715], [1.1416516005884627], [0.3795991531035167], [0.017788774342231434], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]] )
-#camera rotation rel to drone
-cam_rot = np.array([
+#camera frame to drone frame transform
+cam_tf = np.array([
     [  0.0,  1.0 ,  0.0 ],
     [ -1.0,  0.0 ,  0.0 ],
     [  0.0,  0.0 ,  1.0 ]
+])
+#camera offset relative to drone (mm)
+cam_offs = np.array([ [0.1], [2.4], [112.7] ])
+#camera rotation relative to drone frame
+cam_rot = np.array([
+    [ 0.99968779, -0.00485156, -0.02451107]
+    [ 0.00523440,  0.99986494,  0.01557919]
+    [ 0.02443218, -0.01570263,  0.99957816]
 ])
 #board properties
 board_dict = aruco.Dictionary_get(aruco.DICT_6X6_100)
@@ -155,8 +161,8 @@ def main():
             if chs_ret: rvec = chs_rvec.copy();  tvec = chs_tvec.copy()
             else:       rvec = mrk_rvec.copy();  tvec = mrk_tvec.copy()
             #calculate plate position relative to drone
-            odom_rel_pos = cam_rot.dot( tvec + np.matmul(cv2.Rodrigues(rvec)[0], board_cent) )/1000.0 + cam_offs/1000.0
-            odom_rel_mat = np.linalg.multi_dot([cam_rot, cv2.Rodrigues(rvec)[0], board_rot, cam_rot.transpose()])
+            odom_rel_pos = ( cam_rot.dot(cam_tf.dot( tvec + np.matmul(cv2.Rodrigues(rvec)[0], board_cent) )) + cam_offs )/1000.0
+            odom_rel_mat = np.linalg.multi_dot([cam_rot, cam_tf, cv2.Rodrigues(rvec)[0], board_rot, cam_tf.transpose()])
             odom_rel_quat = quaternion_from_matrix(odom_rel_mat)
             #calculate plate velocity relative to drone
             odom_rel_t = rospy.Time.now(); odom_rel_dt = (odom_rel_t-odom_rel_t_prev).to_sec(); odom_rel_t_prev = odom_rel_t
