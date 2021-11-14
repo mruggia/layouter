@@ -41,14 +41,23 @@
       <param name="tresh_corner"   value="2.0"/>            <!-- [deg] angle treshold for a corner to be sharp -->
     </node>
 
+    <!-- preplanner node: command -> setpoint_drone -->
+    <node name="preplanner" pkg="marker" type="preplanner.py" output="screen" clear_params="true">
+      <!-- general parameters -->
+      <param name="rate"           value="50"/>             <!-- [Hz] rate at which setpoint topic is published -->
+      <param name="des_move"       value="[1.0,2.0,1.0]"/>  <!-- [m] desider drone position after "move" service call-->
+      <param name="des_touch"      value="0.170"/>          <!-- [m] desired dz value after "touch" service call -->
+      <param name="vel_move"       value="0.2"/>            <!-- [m/s] max velocity in "move" service call -->
+      <param name="vel_touch"      value="0.02"/>           <!-- [m/s] max velocity in "touch" service call -->
+    </node>
+
     <!-- wheels node: setpoint_plate & odometry_plate -> [dynamixel motors] -->
     <node name="wheels" pkg="marker" type="wheels.py" output="screen" clear_params="true">
       <!-- general parameters -->
       <param name="rate"           value="50"/>             <!-- [Hz] rate at which wheel commands are updated -->
-      <param name="wheel_dia"      value="100.0"/>          <!-- [mm] diameter of omni wheels -->
+      <param name="wheel_dia"      value="103.5"/>          <!-- [mm] diameter of omni wheels -->
       <!-- controller parameters -->
       <param name="controller"     value="p"/>              <!-- controller type: "ff":feed-forward, "p":proportional  -->
-      <param name="ctrl_dz"        value="0.160"/>          <!-- target for spring compression (not implemented) -->
       <param name="ctrl_pos_p"     value="8.0"/>            <!-- P gain of proportional position controller -->
       <param name="ctrl_ang_p"     value="1.5"/>            <!-- P gain of proportional angle controller -->
       <!-- dynamixel parameters -->
