@@ -55,9 +55,10 @@
     <node name="wheels" pkg="marker" type="wheels.py" output="screen" clear_params="true">
       <!-- general parameters -->
       <param name="rate"           value="50"/>             <!-- [Hz] rate at which wheel commands are updated -->
-      <param name="wheel_dia"      value="103.5"/>          <!-- [mm] diameter of omni wheels -->
+      <param name="wheel_dia"      value="102.8"/>          <!-- [mm] diameter of omni wheels -->
+      <param name="wheel_dist"     value="102.5"/>          <!-- [mm] radial distance from center to wheel contact point -->
       <!-- controller parameters -->
-      <param name="controller"     value="p"/>              <!-- controller type: "ff":feed-forward, "p":proportional  -->
+      <param name="controller"     value="ff"/>              <!-- controller type: "ff":feed-forward, "p":proportional  -->
       <param name="ctrl_pos_p"     value="8.0"/>            <!-- P gain of proportional position controller -->
       <param name="ctrl_ang_p"     value="1.5"/>            <!-- P gain of proportional angle controller -->
       <!-- dynamixel parameters -->
