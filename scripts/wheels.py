@@ -68,7 +68,7 @@ def main():
                 theta = (setp_plate.pos.theta+odom_plate.pos.theta)/2.0
                 vx = setp_plate.vel.x + param_ctrl_pos_p * (setp_plate.pos.x-odom_plate.pos.x)
                 vy = setp_plate.vel.y + param_ctrl_pos_p * (setp_plate.pos.y-odom_plate.pos.y)
-                vt =                    param_ctrl_ang_p * (setp_plate.pos.theta-odom_plate.pos.theta)
+                vt =                    param_ctrl_ang_p * undo_overflow(setp_plate.pos.theta-odom_plate.pos.theta)
 
             #send velocity to actuators
             wheels_goal = wheels_from_vec( vx, vy, theta )
@@ -201,6 +201,12 @@ def dxl_read(address, length):
         data3 = dxl_pack.read4ByteTxRx(dxl_port, DXL_ID3, address)[0]
     return data1, data2, data3
 
+
+#undo overflow on angle error
+def undo_overflow(angle):
+    if angle > +math.pi: return angle-2*math.pi
+    if angle < -math.pi: return angle+2*math.pi
+    return angle
 
 ################################################################################
 

@@ -12,6 +12,7 @@ if '/lib/opencv+econ' not in os.environ['LD_LIBRARY_PATH']:
 import threading
 import math
 import numpy as np
+np.seterr(all="ignore") #ignore runtimewarning, and deal with NaNs instead
 import cv2, os
 from cv2 import aruco
 #import matplotlib.pyplot as plt
@@ -149,10 +150,7 @@ def main():
             mrk_crn, mrk_ids, _ = aruco.detectMarkers(frame, board_dict, cameraMatrix=cam_mat, distCoeff=cam_dis); mrk_num = len(mrk_crn)
             mrk_ret, mrk_rvec, mrk_tvec = cv2.aruco.estimatePoseBoard(mrk_crn, mrk_ids, board_obj, cam_mat, cam_dis)
             #skip if no pose estimation possible with markers
-            if mrk_ret == 0:
-                rospy.logwarn("failed to find markers. no plate odometry published")
-                rate.sleep()
-                continue
+            if mrk_ret == 0: rate.sleep(); continue
             #find chessboard corners
             chs_num, chs_crn, chs_ids = cv2.aruco.interpolateCornersCharuco(mrk_crn, mrk_ids, frame, board_obj, cameraMatrix=cam_mat, distCoeffs=cam_dis, minMarkers=1)
             for crn in chs_crn: cv2.cornerSubPix(frame, crn, winSize = (3,3), zeroZone = (-1,-1), criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.00001))
@@ -192,6 +190,8 @@ def main():
             odom_plate.vel.x = odom_plate_vel[0][0]
             odom_plate.vel.y = odom_plate_vel[1][0]
             odom_plate.vel.theta = odom_plate_ang[2][0]
+            #break if anything went wrong
+            if np.isnan(np.sum(odom_plate_pos)) or np.isnan(np.sum(odom_plate_quat)) or np.isnan(np.sum(odom_plate_vel)) or np.isnan(np.sum(odom_plate_ang)): rate.sleep(); continue
             #submit debugging topics
             odom_plate_abs = Odometry()
             odom_plate_abs.header.stamp = rospy.Time.now()
