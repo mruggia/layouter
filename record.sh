@@ -16,6 +16,7 @@ rosbag record \
 /marker/odometry_plate_abs \
 /marker/odometry_plate_rel \
 /marker/setpoint_plate \
+/marker/control_plate \
 /marker/draw \
 /ouzel/command/trajectory \
 /ouzel/command/current_reference \

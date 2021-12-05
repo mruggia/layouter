@@ -45,7 +45,7 @@
     <node name="preplanner" pkg="marker" type="preplanner.py" output="screen" clear_params="true">
       <!-- general parameters -->
       <param name="rate"           value="50"/>             <!-- [Hz] rate at which setpoint topic is published -->
-      <param name="des_move"       value="[1.0,2.0,1.0]"/>  <!-- [m] desider drone position after "move" service call-->
+      <param name="des_move"       value="[-0.28,-0.24,2.0]"/>  <!-- [m] desider drone position after "move" service call-->
       <param name="des_touch"      value="0.170"/>          <!-- [m] desired dz value after "touch" service call -->
       <param name="vel_move"       value="0.2"/>            <!-- [m/s] max velocity in "move" service call -->
       <param name="vel_touch"      value="0.02"/>           <!-- [m/s] max velocity in "touch" service call -->
