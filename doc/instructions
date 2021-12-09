@@ -1,4 +1,6 @@
-upboard setup:
+#######################################
+### setup for upboard test platform ###
+#######################################
 
 install ubuntu desktop 18.04 lts
 
@@ -27,3 +29,22 @@ give permission to access camera
 clean compile
   cd catkin_ws
   catkin build marker --force-cmake --pre-clean
+
+##################################
+### usage instructions (ouzel) ###
+##################################
+
+start node_manager on base-station
+connect base-station to ROS network
+run "marker_ouzel_base_station.launch" on base-station trough node_manager
+connect ouzel to ROS network
+ssh into ouzel
+run "marker_ouzel.launch" on ouzel trough command line (necessary to get python3 to work)
+launch all base-station nodes in node_manager
+on the ouzel control gui, click "init MSF" and set remote switch so that control mode reads "OFFBOARD"
+launch rqt and open tab to set position setpoint
+tick checkbox to publish setpoints and set z setpoint up ~0.2m (check that wrench target rises)
+arm remote & increase throttle to 100% to take off
+use marker/preplanner/move service call to move drone below plate (position set in ouzel_core.launch)
+use marker/perplanner/touch_distance service call to move drone to touch ceiling (spring compression dist set in ouzel_core.launch)
+use marker/planner/execute service call to execute a g-code file from the "marker/gcode" folder

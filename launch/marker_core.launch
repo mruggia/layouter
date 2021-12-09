@@ -5,6 +5,7 @@
   <!-- outgoing/incoming topic names -->
   <arg name="odometry_drone"       default="odometry_drone" />        <!-- topic name of drone odometry -->
   <arg name="setpoint_drone"       default="setpoint_drone" />        <!-- topic name of drone setpoint -->
+  <arg name="wrench_drone"         default="wrench_drone" />          <!-- topic name of drone wrench -->
   <arg name="odometry_plate_vicon" default="odometry_plate_vicon" />  <!-- topic name of plate odometry (only used if camera mode="vicon") -->
   <!-- device paths -->
   <arg name="device_drawer"        default="" />                      <!-- drawer servo -->
@@ -17,6 +18,7 @@
     <!-- save arg as param in marker namespace -->
     <param name="odometry_drone"       value="$(arg odometry_drone)" />
     <param name="setpoint_drone"       value="$(arg setpoint_drone)" />
+    <param name="wrench_drone"         value="$(arg wrench_drone)" />
     <param name="odometry_plate_vicon" value="$(arg odometry_plate_vicon)" />
     <param name="device_drawer"        value="$(arg device_drawer)" />
     <param name="device_wheels"        value="$(arg device_wheels)" />
@@ -46,7 +48,8 @@
       <!-- general parameters -->
       <param name="rate"           value="50"/>             <!-- [Hz] rate at which setpoint topic is published -->
       <param name="des_move"       value="[-0.28,-0.24,2.0]"/>  <!-- [m] desider drone position after "move" service call-->
-      <param name="des_touch"      value="0.170"/>          <!-- [m] desired dz value after "touch" service call -->
+      <param name="des_touch_distance" value="0.170"/>      <!-- [m] desired dz distance after "touch_distance" service call -->
+      <param name="des_touch_force"    value="68"/>         <!-- [N] desired z force after "touch_force" service call -->
       <param name="vel_move"       value="0.2"/>            <!-- [m/s] max velocity in "move" service call -->
       <param name="vel_touch"      value="0.02"/>           <!-- [m/s] max velocity in "touch" service call -->
     </node>

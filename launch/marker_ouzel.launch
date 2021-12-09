@@ -23,6 +23,7 @@
     <!-- outgoing/incoming topic names -->
     <arg name="odometry_drone"       value="/ouzel/msf_core/odometry" />              <!-- topic name of drone odometry -->
     <arg name="setpoint_drone"       value="/ouzel/command/trajectory" />             <!-- topic name of drone setpoint -->
+    <arg name="wrench_drone"         value="/ouzel/wrench_target" />                  <!-- topic name of drone wrench -->
     <arg name="odometry_plate_vicon" value="/plate/vrpn_client/estimated_odometry" /> <!-- topic name of plate odometry (only used if camera mode="vicon") -->
     <!-- device paths -->
     <arg name="device_drawer"        value="/dev/ttyACM0" />   <!-- drawer servo -->

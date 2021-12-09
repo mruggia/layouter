@@ -10,8 +10,9 @@ from marker.msg import StatePlate
 from std_msgs.msg import Header
 from geometry_msgs.msg import Vector3, Transform, Twist
 from trajectory_msgs.msg import MultiDOFJointTrajectory, MultiDOFJointTrajectoryPoint
+from mav_msgs.msg import TorqueThrust
 
-from std_srvs.srv import Empty, EmptyResponse
+from marker.srv import Empty, EmptyResponse
 
 ################################################################################
 
@@ -22,16 +23,19 @@ def main():
     global param_rate; param_rate = float(rospy.get_param("~rate"))
     global des_move; des_move = ast.literal_eval(rospy.get_param("~des_move"))
     global vel_move; vel_move = float(rospy.get_param("~vel_move"))
-    global des_touch; des_touch = float(rospy.get_param("~des_touch"))
+    global des_touch_dist; des_touch_dist = float(rospy.get_param("~des_touch_distance"))
+    global des_touch_force; des_touch_force = float(rospy.get_param("~des_touch_force"))
     global vel_touch; vel_touch = float(rospy.get_param("~vel_touch"))
     #initialize subscriptions
     rospy.Subscriber('odometry_plate', StatePlate, callback_odom_plate)
     rospy.Subscriber(rospy.get_param('setpoint_drone'), MultiDOFJointTrajectory, callback_setp_drone)
+    rospy.Subscriber(rospy.get_param('wrench_drone'), TorqueThrust, callback_wrench_drone)
     #initialize publishers
     global pub_setpoint_drone; pub_setpoint_drone = rospy.Publisher(rospy.get_param('setpoint_drone'), MultiDOFJointTrajectory, queue_size=256)
     #initialize services
     rospy.Service('move', Empty, handle_move)
-    rospy.Service('touch', Empty, handle_touch)
+    rospy.Service('touch_distance', Empty, handle_touch_dist)
+    rospy.Service('touch_force', Empty, handle_touch_force)
     #initialize drone setpoint
     global setp_drone;
     setp_drone = MultiDOFJointTrajectory(Header(0,rospy.Time.now(),'world'), ['base_link'], [MultiDOFJointTrajectoryPoint([Transform()], [Twist()], [Twist(),Twist()], rospy.Time(0))] )
@@ -51,6 +55,11 @@ def callback_odom_plate(odom_plate_new):
 setp_drone = MultiDOFJointTrajectory()
 def callback_setp_drone(setp_drone_new):
     global setp_drone; setp_drone = deepcopy(setp_drone_new)
+
+#callback for drone wrench estimator
+wrench_drone = TorqueThrust()
+def callback_wrench_drone(wrench_drone_new):
+    global wrench_drone; wrench_drone = deepcopy(wrench_drone_new)
 
 ################################################################################
 
@@ -72,22 +81,38 @@ def handle_move(req):
         rospy.sleep(1.0/param_rate)
     publish_setpoint(goal_pos)
 
-    return EmptyResponse()
+    return EmptyResponse(True)
 
-#send setpoints to move drone to touch ceiling
-def handle_touch(req):
+#send setpoints to move drone to touch ceiling (until target dz distance is reached)
+def handle_touch_dist(req):
     global ref_drone; ref_drone = deepcopy(setp_drone)
     curr_pos = np.array([ref_drone.points[0].transforms[0].translation.x, ref_drone.points[0].transforms[0].translation.y, ref_drone.points[0].transforms[0].translation.z])
 
     step_len = vel_touch/param_rate
 
     while True:
-        if odom_plate.dz <= des_touch: break
+        if odom_plate.dz <= des_touch_dist: break
+        curr_pos[2] = curr_pos[2] + step_len
+        publish_setpoint(curr_pos)
+        rospy.sleep(1.0/param_rate)
+        print(curr_pos[2])
+
+    return EmptyResponse(True)
+
+#send setpoints to move drone to touch ceiling (until target z force is reached)
+def handle_touch_force(req):
+    global ref_drone; ref_drone = deepcopy(setp_drone)
+    curr_pos = np.array([ref_drone.points[0].transforms[0].translation.x, ref_drone.points[0].transforms[0].translation.y, ref_drone.points[0].transforms[0].translation.z])
+
+    step_len = vel_touch/param_rate
+
+    while True:
+        if wrench_drone.thrust.z >= des_touch_force: break
         curr_pos[2] = curr_pos[2] + step_len
         publish_setpoint(curr_pos)
         rospy.sleep(1.0/param_rate)
 
-    return EmptyResponse()
+    return EmptyResponse(True)
 
 
 #publish drone setpoint
