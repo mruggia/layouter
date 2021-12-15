@@ -62,8 +62,8 @@
       <param name="wheel_dist"     value="102.5"/>          <!-- [mm] radial distance from center to wheel contact point -->
       <!-- controller parameters -->
       <param name="controller"     value="ff"/>              <!-- controller type: "ff":feed-forward, "p":proportional  -->
-      <param name="ctrl_pos_p"     value="8.0"/>            <!-- P gain of proportional position controller -->
-      <param name="ctrl_ang_p"     value="1.5"/>            <!-- P gain of proportional angle controller -->
+      <param name="ctrl_pos_p"     value="6.0"/>            <!-- P gain of proportional position controller -->
+      <param name="ctrl_ang_p"     value="0.5"/>            <!-- P gain of proportional angle controller -->
       <!-- dynamixel parameters -->
       <param name="DXL_ID1"        value="21"/>             <!-- ID of dynamixel motor 1 (at 120deg from x-axis) -->
       <param name="DXL_ID2"        value="22"/>             <!-- ID of dynamixel motor 2 (at 270deg from x-axis) -->
